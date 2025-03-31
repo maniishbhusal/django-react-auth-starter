@@ -198,3 +198,55 @@ SIMPLE_JWT = {
     # 'TOKEN_OBTAIN_SERIALIZER': 'your_app.serializers.MyTokenObtainPairSerializer',
     # 'TOKEN_REFRESH_SERIALIZER': 'your_app.serializers.MyTokenRefreshSerializer',
 }
+
+# backend/settings.py
+
+# Get Frontend URL from environment variable for emails
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173') # Default for Vite dev server
+
+DJOSER = {
+    'PASSWORD_RESET_CONFIRM_URL': f'{FRONTEND_URL}/password/reset/confirm/{{uid}}/{{token}}',
+    'USERNAME_RESET_CONFIRM_URL': f'{FRONTEND_URL}/username/reset/confirm/{{uid}}/{{token}}',
+    'ACTIVATION_URL': f'{FRONTEND_URL}/activate/{{uid}}/{{token}}',
+    'SEND_ACTIVATION_EMAIL': True, # Set to False if you handle activation differently
+    'SEND_CONFIRMATION_EMAIL': True,
+    'SOCIAL_AUTH_ALLOWED_REDIRECT_URIS': os.getenv('SOCIAL_AUTH_ALLOWED_REDIRECT_URIS', '').split(',') if os.getenv('SOCIAL_AUTH_ALLOWED_REDIRECT_URIS') else [FRONTEND_URL],
+
+    'USER_ID_FIELD': 'id', # Matches CustomUser primary key
+    'USER_CREATE_PASSWORD_RETYPE': True,
+    'SET_PASSWORD_RETYPE': True,
+    'PASSWORD_RESET_CONFIRM_RETYPE': True,
+    'USERNAME_RESET_CONFIRM_RETYPE': True,
+
+    'PASSWORD_CHANGED_EMAIL_CONFIRMATION': True,
+    'USERNAME_CHANGED_EMAIL_CONFIRMATION': True,
+
+    'SERIALIZERS': {
+        'user_create': 'users.serializers.UserCreateSerializer', # Use custom serializer if needed
+        'user': 'djoser.serializers.UserSerializer',
+        'current_user': 'djoser.serializers.UserSerializer',
+        'user_delete': 'djoser.serializers.UserDeleteSerializer',
+        # Add other serializers if you customize them
+    },
+    'EMAIL': {
+        'activation': 'djoser.email.ActivationEmail',
+        'confirmation': 'djoser.email.ConfirmationEmail',
+        'password_reset': 'djoser.email.PasswordResetEmail',
+        'password_changed_confirmation': 'djoser.email.PasswordChangedConfirmationEmail',
+        'username_changed_confirmation': 'djoser.email.UsernameChangedConfirmationEmail',
+        'username_reset': 'djoser.email.UsernameResetEmail',
+    },
+    # For social auth integration if needed within Djoser's flow (we primarily use allauth directly here)
+    # 'SOCIAL_AUTH_ALLOWED_REDIRECT_URIS': ['your_frontend_redirect_uri']
+}
+
+# Email Backend Configuration (Example using console for development)
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# For production, use SMTP or a service like SendGrid/Mailgun:
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = os.getenv('EMAIL_HOST')
+# EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+# EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+# EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+# EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+# DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
