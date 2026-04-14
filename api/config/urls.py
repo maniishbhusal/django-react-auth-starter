@@ -6,9 +6,8 @@ from django.urls import include, path
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    # Auth endpoints (Djoser)
-    path("api/v1/auth/", include("djoser.urls")),
-    path("api/v1/auth/", include("djoser.urls.jwt")),
+    # Auth endpoints (Djoser + SimpleJWT with per-endpoint rate limiting)
+    path("api/v1/auth/", include("accounts.djoser_urls")),
     # API endpoints
     path("api/v1/", include("accounts.urls")),
 ]

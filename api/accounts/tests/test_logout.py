@@ -59,8 +59,14 @@ class TestLogoutView:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.data["detail"] == "Invalid or expired token."
 
-    def test_logout_unauthenticated(self, api_client: APIClient, user: User):
-        """Test logout fails when not authenticated."""
+    def test_logout_without_bearer_still_blacklists(
+        self, api_client: APIClient, user: User
+    ):
+        """Logout works without a Bearer access token — the refresh token is the capability.
+
+        A user whose access token is expired or stolen must still be able to
+        invalidate their refresh token.
+        """
         login_response = api_client.post(
             self.login_url,
             {"email": user.email, "password": USER_PASSWORD},
@@ -74,4 +80,11 @@ class TestLogoutView:
             {"refresh": refresh_token},
             format="json",
         )
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_200_OK
+
+        refresh_response = api_client.post(
+            self.refresh_url,
+            {"refresh": refresh_token},
+            format="json",
+        )
+        assert refresh_response.status_code == status.HTTP_401_UNAUTHORIZED

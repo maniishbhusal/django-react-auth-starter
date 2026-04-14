@@ -4,6 +4,9 @@ import os
 
 from .base import *
 
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY environment variable is required in production")
+
 DEBUG = False
 
 # Filter out empty strings from split
