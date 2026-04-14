@@ -6,14 +6,12 @@ import { AuthLayout, PasswordInput } from "@/components/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
 import { useLogin } from "@/hooks/use-auth-mutations"
 
 export function LoginPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState("")
 
   const loginMutation = useLogin()
@@ -23,7 +21,7 @@ export function LoginPage() {
     setError("")
 
     loginMutation.mutate(
-      { email, password, rememberMe },
+      { email, password },
       {
         onSuccess: () => {
           toast.success("Welcome back!")
@@ -91,21 +89,8 @@ export function LoginPage() {
           />
         </div>
 
-        {/* Remember me & Forgot password */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="remember"
-              checked={rememberMe}
-              onCheckedChange={(checked) => setRememberMe(checked === true)}
-            />
-            <Label
-              htmlFor="remember"
-              className="text-sm text-text-secondary font-normal cursor-pointer"
-            >
-              Remember me
-            </Label>
-          </div>
+        {/* Forgot password */}
+        <div className="flex items-center justify-end">
           <Link
             to="/forgot-password"
             className="text-sm text-coral hover:text-coral-hover font-medium"

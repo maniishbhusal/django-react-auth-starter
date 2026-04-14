@@ -20,7 +20,7 @@ export interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (tokens: StoredTokens, rememberMe?: boolean) => Promise<void>
+  login: (tokens: StoredTokens) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -62,19 +62,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const login = useCallback(
-    async (tokens: StoredTokens, rememberMe: boolean = true) => {
-      setStoredTokens(tokens, rememberMe)
-      try {
-        const userData = await getMe()
-        setUser(userData)
-      } catch {
-        clearStoredTokens()
-        setUser(null)
-      }
-    },
-    []
-  )
+  const login = useCallback(async (tokens: StoredTokens) => {
+    setStoredTokens(tokens)
+    try {
+      const userData = await getMe()
+      setUser(userData)
+    } catch {
+      clearStoredTokens()
+      setUser(null)
+    }
+  }, [])
 
   const logout = useCallback(async () => {
     // Try to blacklist the refresh token on the server

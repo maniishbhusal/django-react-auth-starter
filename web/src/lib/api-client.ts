@@ -2,7 +2,6 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios"
 import { API_URL } from "./config"
 
 const TOKEN_KEY = "auth_tokens"
-const STORAGE_TYPE_KEY = "auth_storage_type"
 
 export interface StoredTokens {
   access: string
@@ -10,11 +9,7 @@ export interface StoredTokens {
 }
 
 export function getStoredTokens(): StoredTokens | null {
-  // Check both storages (localStorage first, then sessionStorage)
-  let tokens = localStorage.getItem(TOKEN_KEY)
-  if (!tokens) {
-    tokens = sessionStorage.getItem(TOKEN_KEY)
-  }
+  const tokens = localStorage.getItem(TOKEN_KEY)
   if (!tokens) return null
   try {
     return JSON.parse(tokens)
@@ -23,28 +18,12 @@ export function getStoredTokens(): StoredTokens | null {
   }
 }
 
-export function setStoredTokens(
-  tokens: StoredTokens,
-  rememberMe: boolean = true
-): void {
-  // Clear from both storages first
-  localStorage.removeItem(TOKEN_KEY)
-  sessionStorage.removeItem(TOKEN_KEY)
-
-  // Store based on rememberMe preference
-  if (rememberMe) {
-    localStorage.setItem(STORAGE_TYPE_KEY, "local")
-    localStorage.setItem(TOKEN_KEY, JSON.stringify(tokens))
-  } else {
-    localStorage.setItem(STORAGE_TYPE_KEY, "session")
-    sessionStorage.setItem(TOKEN_KEY, JSON.stringify(tokens))
-  }
+export function setStoredTokens(tokens: StoredTokens): void {
+  localStorage.setItem(TOKEN_KEY, JSON.stringify(tokens))
 }
 
 export function clearStoredTokens(): void {
   localStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(STORAGE_TYPE_KEY)
-  sessionStorage.removeItem(TOKEN_KEY)
 }
 
 export const apiClient = axios.create({

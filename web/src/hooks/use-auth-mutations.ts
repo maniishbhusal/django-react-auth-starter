@@ -27,27 +27,16 @@ export function useRegister() {
   })
 }
 
-interface LoginMutationVariables extends LoginRequest {
-  rememberMe?: boolean
-}
-
 export function useLogin() {
   const { login } = useAuth()
 
-  return useMutation<
-    LoginResponse,
-    AxiosError<ApiError>,
-    LoginMutationVariables
-  >({
-    mutationFn: ({ email, password }) => loginApi({ email, password }),
-    onSuccess: async (data, variables) => {
-      await login(
-        {
-          access: data.access,
-          refresh: data.refresh,
-        },
-        variables.rememberMe ?? true
-      )
+  return useMutation<LoginResponse, AxiosError<ApiError>, LoginRequest>({
+    mutationFn: loginApi,
+    onSuccess: async (data) => {
+      await login({
+        access: data.access,
+        refresh: data.refresh,
+      })
     },
   })
 }
