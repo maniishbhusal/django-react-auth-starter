@@ -30,6 +30,7 @@ REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {  # noqa: F405
     "login": "10000/minute",
     "register": "10000/minute",
     "password_reset": "10000/minute",
+    "refresh": "10000/minute",
 }
 
 # Faster password hashing for tests

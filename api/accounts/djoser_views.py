@@ -11,6 +11,7 @@ from .cookies import set_refresh_cookie
 from .throttles import (
     LoginRateThrottle,
     PasswordResetRateThrottle,
+    RefreshRateThrottle,
     RegisterRateThrottle,
 )
 
@@ -31,7 +32,7 @@ class ThrottledTokenObtainPairView(TokenObtainPairView):
 class ThrottledTokenRefreshView(TokenRefreshView):
     """Refresh: reads refresh token from httpOnly cookie, returns access in body."""
 
-    throttle_classes = [LoginRateThrottle]
+    throttle_classes = [RefreshRateThrottle]
 
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get(settings.REFRESH_COOKIE_NAME)

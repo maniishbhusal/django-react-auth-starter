@@ -117,6 +117,7 @@ REST_FRAMEWORK = {
         "login": "5/minute",
         "register": "5/hour",
         "password_reset": "3/hour",
+        "refresh": "30/minute",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }

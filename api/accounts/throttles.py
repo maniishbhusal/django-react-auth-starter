@@ -13,3 +13,7 @@ class RegisterRateThrottle(AnonRateThrottle):
 
 class PasswordResetRateThrottle(AnonRateThrottle):
     scope = "password_reset"
+
+
+class RefreshRateThrottle(AnonRateThrottle):
+    scope = "refresh"
