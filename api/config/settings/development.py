@@ -24,3 +24,6 @@ CORS_ALLOWED_ORIGINS = [
 
 # Email: Use console backend for local development (prints to terminal)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# Refresh cookie: localhost is HTTP, so Secure must be False
+REFRESH_COOKIE_SECURE = False

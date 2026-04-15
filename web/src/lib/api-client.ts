@@ -1,51 +1,38 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios"
 import { API_URL } from "./config"
 
-const TOKEN_KEY = "auth_tokens"
+let accessToken: string | null = null
 
-export interface StoredTokens {
-  access: string
-  refresh: string
+export function getAccessToken(): string | null {
+  return accessToken
 }
 
-export function getStoredTokens(): StoredTokens | null {
-  const tokens = localStorage.getItem(TOKEN_KEY)
-  if (!tokens) return null
-  try {
-    return JSON.parse(tokens)
-  } catch {
-    return null
-  }
+export function setAccessToken(token: string | null): void {
+  accessToken = token
 }
 
-export function setStoredTokens(tokens: StoredTokens): void {
-  localStorage.setItem(TOKEN_KEY, JSON.stringify(tokens))
-}
-
-export function clearStoredTokens(): void {
-  localStorage.removeItem(TOKEN_KEY)
+export function clearAccessToken(): void {
+  accessToken = null
 }
 
 export const apiClient = axios.create({
   baseURL: API_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 })
 
-// Request interceptor - add auth token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const tokens = getStoredTokens()
-    if (tokens?.access) {
-      config.headers.Authorization = `Bearer ${tokens.access}`
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`
     }
     return config
   },
   (error) => Promise.reject(error)
 )
 
-// Response interceptor - handle token refresh
 let isRefreshing = false
 let failedQueue: Array<{
   resolve: (token: string) => void
@@ -70,10 +57,14 @@ apiClient.interceptors.response.use(
       _retry?: boolean
     }
 
-    // If error is 401 and we haven't retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isRefreshCall = originalRequest?.url?.includes("/auth/jwt/refresh/")
+
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isRefreshCall
+    ) {
       if (isRefreshing) {
-        // Queue the request while refreshing
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
         })
@@ -87,31 +78,19 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true
       isRefreshing = true
 
-      const tokens = getStoredTokens()
-      if (!tokens?.refresh) {
-        clearStoredTokens()
-        isRefreshing = false
-        return Promise.reject(error)
-      }
-
       try {
-        const response = await axios.post(`${API_URL}/auth/jwt/refresh/`, {
-          refresh: tokens.refresh,
-        })
-
-        const newTokens = {
-          access: response.data.access,
-          refresh: response.data.refresh || tokens.refresh,
-        }
-        setStoredTokens(newTokens)
-
-        processQueue(null, newTokens.access)
-        originalRequest.headers.Authorization = `Bearer ${newTokens.access}`
-
+        const response = await axios.post<{ access: string }>(
+          `${API_URL}/auth/jwt/refresh/`,
+          {},
+          { withCredentials: true }
+        )
+        accessToken = response.data.access
+        processQueue(null, accessToken)
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`
         return apiClient(originalRequest)
       } catch (refreshError) {
         processQueue(refreshError, null)
-        clearStoredTokens()
+        accessToken = null
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false

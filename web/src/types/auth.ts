@@ -7,11 +7,6 @@ export interface User {
   date_joined: string
 }
 
-export interface AuthTokens {
-  access: string
-  refresh: string
-}
-
 export interface RegisterRequest {
   email: string
   username: string
@@ -34,7 +29,6 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   access: string
-  refresh: string
 }
 
 export interface ActivateRequest {
@@ -57,13 +51,8 @@ export interface ResetPasswordRequest {
   re_new_password: string
 }
 
-export interface RefreshTokenRequest {
-  refresh: string
-}
-
 export interface RefreshTokenResponse {
   access: string
-  refresh: string
 }
 
 export interface ApiError {

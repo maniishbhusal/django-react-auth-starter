@@ -1,6 +1,7 @@
 """Tests for JWT authentication endpoints."""
 
 import pytest
+from django.conf import settings
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -14,7 +15,7 @@ class TestJWTCreate:
     url = "/api/v1/auth/jwt/create/"
 
     def test_login_success(self, api_client: APIClient, user: User):
-        """Test successful login returns access and refresh tokens."""
+        """Login returns access token in body and refresh token as httpOnly cookie."""
         response = api_client.post(
             self.url,
             {"email": user.email, "password": "TestPass123!"},
@@ -22,7 +23,14 @@ class TestJWTCreate:
         )
         assert response.status_code == status.HTTP_200_OK
         assert "access" in response.data
-        assert "refresh" in response.data
+        assert "refresh" not in response.data
+
+        cookie = response.cookies.get(settings.REFRESH_COOKIE_NAME)
+        assert cookie is not None
+        assert cookie.value
+        assert cookie["httponly"]
+        assert cookie["samesite"] == settings.REFRESH_COOKIE_SAMESITE
+        assert cookie["path"] == settings.REFRESH_COOKIE_PATH
 
     def test_login_with_wrong_password(self, api_client: APIClient, user: User):
         """Test login fails with wrong password."""
@@ -78,38 +86,36 @@ class TestJWTRefresh:
     login_url = "/api/v1/auth/jwt/create/"
 
     def test_refresh_token_success(self, api_client: APIClient, user: User):
-        """Test refreshing access token with valid refresh token."""
-        # First login to get tokens
+        """Refresh reads token from cookie, returns new access in body and rotates the cookie."""
         login_response = api_client.post(
             self.login_url,
             {"email": user.email, "password": "TestPass123!"},
             format="json",
         )
-        refresh_token = login_response.data["refresh"]
+        assert login_response.status_code == status.HTTP_200_OK
+        # APIClient persists cookies across requests automatically.
 
-        # Refresh the token
-        response = api_client.post(
-            self.url,
-            {"refresh": refresh_token},
-            format="json",
-        )
+        response = api_client.post(self.url, {}, format="json")
+
         assert response.status_code == status.HTTP_200_OK
         assert "access" in response.data
-        assert "refresh" in response.data  # Token rotation enabled
+        assert "refresh" not in response.data
+
+        new_cookie = response.cookies.get(settings.REFRESH_COOKIE_NAME)
+        assert new_cookie is not None
+        assert new_cookie.value
+        assert new_cookie["httponly"]
 
     def test_refresh_with_invalid_token(self, api_client: APIClient):
-        """Test refresh fails with invalid token."""
-        response = api_client.post(
-            self.url,
-            {"refresh": "invalid-token"},
-            format="json",
-        )
+        """Test refresh fails when cookie value is invalid."""
+        api_client.cookies[settings.REFRESH_COOKIE_NAME] = "invalid-token"
+        response = api_client.post(self.url, {}, format="json")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_refresh_without_token(self, api_client: APIClient):
-        """Test refresh fails without token."""
+    def test_refresh_without_cookie(self, api_client: APIClient):
+        """Test refresh fails when no cookie is sent."""
         response = api_client.post(self.url, {}, format="json")
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.django_db
@@ -121,7 +127,6 @@ class TestJWTVerify:
 
     def test_verify_valid_token(self, api_client: APIClient, user: User):
         """Test verifying a valid access token."""
-        # First login to get tokens
         login_response = api_client.post(
             self.login_url,
             {"email": user.email, "password": "TestPass123!"},
@@ -129,7 +134,6 @@ class TestJWTVerify:
         )
         access_token = login_response.data["access"]
 
-        # Verify the token
         response = api_client.post(
             self.url,
             {"token": access_token},

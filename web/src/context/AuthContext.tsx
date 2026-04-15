@@ -9,18 +9,20 @@ import {
 import { useQueryClient } from "@tanstack/react-query"
 import type { User } from "@/types/auth"
 import {
-  getStoredTokens,
-  setStoredTokens,
-  clearStoredTokens,
-  type StoredTokens,
+  setAccessToken,
+  clearAccessToken,
 } from "@/lib/api-client"
-import { getMe, logout as logoutApi } from "@/lib/auth-api"
+import {
+  getMe,
+  logout as logoutApi,
+  refreshToken as refreshTokenApi,
+} from "@/lib/auth-api"
 
 export interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (tokens: StoredTokens) => Promise<void>
+  login: (access: string) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -31,27 +33,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const queryClient = useQueryClient()
 
-  // Check auth status on mount
+  // Bootstrap: try silent refresh using the httpOnly cookie. If it succeeds,
+  // we have a valid session; if it 401s, the user is logged out.
   useEffect(() => {
     let isMounted = true
 
     const checkAuth = async () => {
-      const tokens = getStoredTokens()
-      if (tokens?.access) {
-        try {
-          const userData = await getMe()
-          if (isMounted) {
-            setUser(userData)
-          }
-        } catch {
-          clearStoredTokens()
-          if (isMounted) {
-            setUser(null)
-          }
-        }
-      }
-      if (isMounted) {
-        setIsLoading(false)
+      try {
+        const { access } = await refreshTokenApi()
+        setAccessToken(access)
+        const userData = await getMe()
+        if (isMounted) setUser(userData)
+      } catch {
+        clearAccessToken()
+        if (isMounted) setUser(null)
+      } finally {
+        if (isMounted) setIsLoading(false)
       }
     }
 
@@ -62,28 +59,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const login = useCallback(async (tokens: StoredTokens) => {
-    setStoredTokens(tokens)
+  const login = useCallback(async (access: string) => {
+    setAccessToken(access)
     try {
       const userData = await getMe()
       setUser(userData)
     } catch {
-      clearStoredTokens()
+      clearAccessToken()
       setUser(null)
     }
   }, [])
 
   const logout = useCallback(async () => {
-    // Try to blacklist the refresh token on the server
-    const tokens = getStoredTokens()
-    if (tokens?.refresh) {
-      try {
-        await logoutApi(tokens.refresh)
-      } catch {
-        // Ignore errors - we still want to clear local tokens
-      }
+    try {
+      await logoutApi()
+    } catch {
+      // Logout is idempotent server-side; clear local state regardless.
     }
-    clearStoredTokens()
+    clearAccessToken()
     setUser(null)
     queryClient.clear()
   }, [queryClient])

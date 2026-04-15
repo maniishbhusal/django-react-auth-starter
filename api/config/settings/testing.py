@@ -39,3 +39,6 @@ PASSWORD_HASHERS = [
 
 # Disable activation email requirement for testing
 DJOSER["SEND_ACTIVATION_EMAIL"] = False  # noqa: F405
+
+# Refresh cookie: test client is HTTP
+REFRESH_COOKIE_SECURE = False

@@ -132,6 +132,13 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
+# Refresh token is delivered as an httpOnly cookie so XSS cannot read it.
+# SameSite=Strict is the CSRF defense — cookie is never sent on cross-site requests.
+REFRESH_COOKIE_NAME = "refresh_token"
+REFRESH_COOKIE_SAMESITE = "Strict"
+REFRESH_COOKIE_PATH = "/api/v1/auth/"
+REFRESH_COOKIE_SECURE = True  # overridden to False in development/testing
+
 # Token expiration for activation and password reset emails (30 minutes)
 PASSWORD_RESET_TIMEOUT = 30 * 60  # 1800 seconds
 
@@ -166,6 +173,7 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 # CORS
 CORS_ALLOWED_ORIGINS: list[str] = []
+CORS_ALLOW_CREDENTIALS = True  # required so the browser sends the refresh cookie
 
 
 # Email Configuration (Production - SMTP)

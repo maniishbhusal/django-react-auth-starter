@@ -21,13 +21,26 @@ A production-ready authentication starter with Django REST Framework and React. 
 
 ## Features
 
-- JWT authentication with automatic token refresh & rotation
+- JWT authentication with httpOnly cookie refresh token, automatic rotation & blacklisting
 - Email verification flow
 - Password reset with secure tokens
 - Custom User model (UUID primary key, email-based login)
 - Protected & guest route guards
 - Rate limiting & production security headers
 - Swagger/ReDoc API documentation
+
+## Security Model
+
+| Concern | Approach |
+|---|---|
+| Refresh token storage | `HttpOnly; Secure; SameSite=Strict` cookie — JS cannot read it |
+| Access token storage | Memory only (never localStorage or sessionStorage) |
+| CSRF protection | `SameSite=Strict` blocks cross-site requests at browser level |
+| XSS protection | No tokens in JS-readable storage |
+| Refresh token reuse | Rotation + blacklisting — stolen tokens are single-use |
+| Session inactivity | Refresh token expires after 7 days without use |
+
+On every page load the frontend silently calls `/jwt/refresh/` to bootstrap a fresh access token from the cookie. If the cookie is missing or expired, the user is redirected to login.
 
 ## Tech Stack
 
@@ -84,7 +97,7 @@ Available in development mode:
 |--------|----------|-------------|
 | POST | `/api/v1/auth/users/` | Register |
 | POST | `/api/v1/auth/jwt/create/` | Login |
-| POST | `/api/v1/auth/jwt/refresh/` | Refresh token |
+| POST | `/api/v1/auth/jwt/refresh/` | Refresh access token (reads httpOnly cookie, no body needed) |
 | POST | `/api/v1/auth/users/activation/` | Activate account |
 | POST | `/api/v1/auth/users/reset_password/` | Request password reset |
 | POST | `/api/v1/auth/users/reset_password_confirm/` | Confirm password reset |

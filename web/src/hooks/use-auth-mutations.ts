@@ -33,10 +33,7 @@ export function useLogin() {
   return useMutation<LoginResponse, AxiosError<ApiError>, LoginRequest>({
     mutationFn: loginApi,
     onSuccess: async (data) => {
-      await login({
-        access: data.access,
-        refresh: data.refresh,
-      })
+      await login(data.access)
     },
   })
 }

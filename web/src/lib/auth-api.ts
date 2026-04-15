@@ -8,7 +8,6 @@ import type {
   ResendActivationRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
-  RefreshTokenRequest,
   RefreshTokenResponse,
   User,
 } from "@/types/auth"
@@ -28,12 +27,10 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
   return response.data
 }
 
-export async function refreshToken(
-  data: RefreshTokenRequest
-): Promise<RefreshTokenResponse> {
+export async function refreshToken(): Promise<RefreshTokenResponse> {
   const response = await apiClient.post<RefreshTokenResponse>(
     "/auth/jwt/refresh/",
-    data
+    {}
   )
   return response.data
 }
@@ -63,6 +60,6 @@ export async function getMe(): Promise<User> {
   return response.data
 }
 
-export async function logout(refreshToken: string): Promise<void> {
-  await apiClient.post("/auth/logout/", { refresh: refreshToken })
+export async function logout(): Promise<void> {
+  await apiClient.post("/auth/logout/")
 }
