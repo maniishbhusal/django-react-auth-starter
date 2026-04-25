@@ -51,18 +51,26 @@ class TestUserRegistration:
         assert "email" in response.data
         assert response.data["email"][0] == "user with this email already exists."
 
-    def test_register_reactivates_inactive_user(
+    def test_register_against_inactive_user_resends_activation(
         self, api_client: APIClient, user_data: dict, inactive_user: User
     ):
-        """Duplicate signup against an unverified row reactivates it in place."""
+        """Duplicate signup against an unverified row resends activation without mutating credentials.
+
+        Regression guard for the pre-account-hijack vulnerability: an
+        unauthenticated re-signup must NOT overwrite the row's password,
+        otherwise the original registrant's activation click would activate
+        the account with the attacker's credentials.
+        """
         original_id = inactive_user.id
         original_password_hash = inactive_user.password
+        original_full_name = inactive_user.full_name
+        original_agreed_at = inactive_user.agreed_at
 
         user_data["email"] = inactive_user.email
-        user_data["username"] = "freshusername"
-        user_data["full_name"] = "Reactivated Name"
-        user_data["password"] = "BrandNewPass456!"
-        user_data["re_password"] = "BrandNewPass456!"
+        user_data["username"] = "attackerusername"
+        user_data["full_name"] = "Attacker Name"
+        user_data["password"] = "AttackerPass456!"
+        user_data["re_password"] = "AttackerPass456!"
 
         mail.outbox = []
         response = api_client.post(self.url, user_data, format="json")
@@ -72,11 +80,10 @@ class TestUserRegistration:
         refreshed = User.objects.get(email__iexact=inactive_user.email)
         assert refreshed.id == original_id
         assert refreshed.is_active is False
-        assert refreshed.full_name == "Reactivated Name"
-        assert refreshed.password != original_password_hash
-        assert refreshed.check_password("BrandNewPass456!")
-        assert refreshed.agreed_to_terms is True
-        assert refreshed.agreed_at is not None
+        assert refreshed.password == original_password_hash
+        assert refreshed.check_password("AttackerPass456!") is False
+        assert refreshed.full_name == original_full_name
+        assert refreshed.agreed_at == original_agreed_at
 
         assert len(mail.outbox) == 1
         assert inactive_user.email in mail.outbox[0].to

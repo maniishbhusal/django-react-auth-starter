@@ -64,19 +64,18 @@ class UserCreateSerializer(BaseUserCreateSerializer):
         return value.strip()
 
     def create(self, validated_data: dict[str, Any]) -> User:
-        """Create a new user, or reactivate an existing unverified row."""
+        """Create a new user, or trigger an activation re-send for an unverified row."""
         email = validated_data["email"]
         existing = User.objects.filter(
             email__iexact=email, is_active=False
         ).first()
         if existing is not None:
-            existing.full_name = (
-                validated_data.get("full_name", "") or existing.full_name
-            )
-            existing.agreed_to_terms = validated_data.get("agreed_to_terms", False)
-            existing.agreed_at = timezone.now()
-            existing.set_password(validated_data["password"])
-            existing.save()
+            # SECURITY: Do NOT mutate the row. An unauthenticated caller has not
+            # proven control of this email, so overwriting the password here would
+            # let an attacker hijack a pending account when the real owner clicks
+            # the activation email they were already expecting. Returning the row
+            # unchanged still triggers djoser's activation email on save, which
+            # is functionally a re-send for the original registrant.
             return existing
 
         full_name = validated_data.pop("full_name", "")
