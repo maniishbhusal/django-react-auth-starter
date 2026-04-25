@@ -1,6 +1,7 @@
 """Tests for user registration endpoint."""
 
 import pytest
+from django.core import mail
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -39,15 +40,46 @@ class TestUserRegistration:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "email" in response.data
 
-    def test_register_with_duplicate_email(
+    def test_register_with_duplicate_active_email(
         self, api_client: APIClient, user_data: dict, user: User
     ):
-        """Test registration fails with duplicate email."""
+        """Duplicate signup against an active (verified) user is rejected."""
         user_data["email"] = user.email
         user_data["username"] = "newusername"
         response = api_client.post(self.url, user_data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "email" in response.data
+        assert response.data["email"][0] == "user with this email already exists."
+
+    def test_register_reactivates_inactive_user(
+        self, api_client: APIClient, user_data: dict, inactive_user: User
+    ):
+        """Duplicate signup against an unverified row reactivates it in place."""
+        original_id = inactive_user.id
+        original_password_hash = inactive_user.password
+
+        user_data["email"] = inactive_user.email
+        user_data["username"] = "freshusername"
+        user_data["full_name"] = "Reactivated Name"
+        user_data["password"] = "BrandNewPass456!"
+        user_data["re_password"] = "BrandNewPass456!"
+
+        mail.outbox = []
+        response = api_client.post(self.url, user_data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        refreshed = User.objects.get(email__iexact=inactive_user.email)
+        assert refreshed.id == original_id
+        assert refreshed.is_active is False
+        assert refreshed.full_name == "Reactivated Name"
+        assert refreshed.password != original_password_hash
+        assert refreshed.check_password("BrandNewPass456!")
+        assert refreshed.agreed_to_terms is True
+        assert refreshed.agreed_at is not None
+
+        assert len(mail.outbox) == 1
+        assert inactive_user.email in mail.outbox[0].to
 
     def test_register_without_password(self, api_client: APIClient, user_data: dict):
         """Test registration fails without password."""
